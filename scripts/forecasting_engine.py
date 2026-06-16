@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error, mean_absolute_error
 from xgboost import XGBRegressor
 from statsmodels.tsa.statespace.sarimax import SARIMAX
-from prophet import Prophet
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 
 warnings.filterwarnings("ignore")
@@ -99,38 +99,47 @@ def run_arima_forecast(store_df: pd.DataFrame, horizon: int) -> dict:
 
 
 # ---------------------------------------------------------
-# PROPHET
+# HOLT-WINTERS EXPONENTIAL SMOOTHING
 # ---------------------------------------------------------
 
-def run_prophet_forecast(store_df: pd.DataFrame, horizon: int) -> dict:
-    pdf = store_df[["Date", "Weekly_Sales"]].rename(columns={"Date": "ds", "Weekly_Sales": "y"})
-    train, test = pdf.iloc[:-horizon], pdf.iloc[-horizon:]
+def run_holtwinters_forecast(store_df: pd.DataFrame, horizon: int) -> dict:
+    sales = store_df["Weekly_Sales"].astype(float)
+    train, test = sales.iloc[:-horizon], sales.iloc[-horizon:]
 
-    model = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False, interval_width=0.95)
-    model.fit(train)
-    val_pred = model.predict(model.make_future_dataframe(periods=horizon, freq="W-FRI"))
-    val_forecast = val_pred.tail(horizon)["yhat"].values
+    model = ExponentialSmoothing(
+        train, trend="add", seasonal="add", seasonal_periods=52,
+        initialization_method="estimated",
+    )
+    fitted = model.fit(optimized=True)
+    val_forecast = fitted.forecast(horizon)
 
-    final = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False, interval_width=0.95)
-    final.fit(pdf)
-    fut = final.predict(final.make_future_dataframe(periods=horizon, freq="W-FRI")).tail(horizon)
+    final = ExponentialSmoothing(
+        sales, trend="add", seasonal="add", seasonal_periods=52,
+        initialization_method="estimated",
+    ).fit(optimized=True)
+    future_forecast = final.forecast(horizon)
+    residual_std = float(np.std(test.values - val_forecast.values))
+
+    future_dates = pd.date_range(
+        start=store_df["Date"].max() + pd.Timedelta(weeks=1), periods=horizon, freq="W-FRI"
+    )
 
     return {
-        "model_name": "Prophet",
-        "mape": calculate_mape(test["y"], val_forecast),
-        "rmse": calculate_rmse(test["y"], val_forecast),
-        "mae": calculate_mae(test["y"], val_forecast),
+        "model_name": "Holt-Winters",
+        "mape": calculate_mape(test, val_forecast),
+        "rmse": calculate_rmse(test, val_forecast),
+        "mae": calculate_mae(test, val_forecast),
         "forecast_df": pd.DataFrame({
-            "Date": fut["ds"].values, "Model": "Prophet",
-            "Forecast": fut["yhat"].values,
-            "Lower_Bound": fut["yhat_lower"].values,
-            "Upper_Bound": fut["yhat_upper"].values,
+            "Date": future_dates, "Model": "Holt-Winters",
+            "Forecast": future_forecast.values,
+            "Lower_Bound": future_forecast.values - 1.96 * residual_std,
+            "Upper_Bound": future_forecast.values + 1.96 * residual_std,
         }),
         "validation_df": pd.DataFrame({
             "Date": store_df["Date"].iloc[-horizon:].values,
-            "Actual": test["y"].values,
-            "Predicted": val_forecast,
-            "Model": "Prophet",
+            "Actual": test.values,
+            "Predicted": val_forecast.values,
+            "Model": "Holt-Winters",
         }),
     }
 
@@ -262,7 +271,7 @@ def build_forecast_results(results: list) -> dict:
 
 def run_all_forecasts(store_df: pd.DataFrame, horizon: int) -> dict:
     results = []
-    for fn in [run_arima_forecast, run_prophet_forecast, run_xgboost_forecast]:
+    for fn in [run_arima_forecast, run_holtwinters_forecast, run_xgboost_forecast]:
         try:
             results.append(fn(store_df, horizon))
         except Exception:
