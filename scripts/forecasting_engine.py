@@ -10,6 +10,7 @@ from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error, 
 from xgboost import XGBRegressor
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from prophet import Prophet
 
 
 warnings.filterwarnings("ignore")
@@ -145,6 +146,48 @@ def run_holtwinters_forecast(store_df: pd.DataFrame, horizon: int) -> dict:
 
 
 # ---------------------------------------------------------
+# PROPHET
+# ---------------------------------------------------------
+
+def run_prophet_forecast(store_df: pd.DataFrame, horizon: int) -> dict:
+    pdf = store_df[["Date", "Weekly_Sales"]].rename(columns={"Date": "ds", "Weekly_Sales": "y"})
+    train, test = pdf.iloc[:-horizon], pdf.iloc[-horizon:]
+
+    model = Prophet(yearly_seasonality=True, weekly_seasonality=False,
+                    daily_seasonality=False, interval_width=0.95)
+    model.fit(train)
+    val_forecast = model.predict(model.make_future_dataframe(periods=horizon, freq="W-FRI")).tail(horizon)["yhat"].values
+
+    final = Prophet(yearly_seasonality=True, weekly_seasonality=False,
+                    daily_seasonality=False, interval_width=0.95)
+    final.fit(pdf)
+    fut = final.predict(final.make_future_dataframe(periods=horizon, freq="W-FRI")).tail(horizon)
+
+    future_dates = pd.date_range(
+        start=store_df["Date"].max() + pd.Timedelta(weeks=1), periods=horizon, freq="W-FRI"
+    )
+
+    return {
+        "model_name": "Prophet",
+        "mape": calculate_mape(test["y"], val_forecast),
+        "rmse": calculate_rmse(test["y"], val_forecast),
+        "mae": calculate_mae(test["y"], val_forecast),
+        "forecast_df": pd.DataFrame({
+            "Date": future_dates, "Model": "Prophet",
+            "Forecast": fut["yhat"].values,
+            "Lower_Bound": fut["yhat_lower"].values,
+            "Upper_Bound": fut["yhat_upper"].values,
+        }),
+        "validation_df": pd.DataFrame({
+            "Date": store_df["Date"].iloc[-horizon:].values,
+            "Actual": test["y"].values,
+            "Predicted": val_forecast,
+            "Model": "Prophet",
+        }),
+    }
+
+
+# ---------------------------------------------------------
 # XGBOOST
 # ---------------------------------------------------------
 
@@ -271,7 +314,7 @@ def build_forecast_results(results: list) -> dict:
 
 def run_all_forecasts(store_df: pd.DataFrame, horizon: int) -> dict:
     results = []
-    for fn in [run_arima_forecast, run_holtwinters_forecast, run_xgboost_forecast]:
+    for fn in [run_arima_forecast, run_holtwinters_forecast, run_prophet_forecast, run_xgboost_forecast]:
         try:
             results.append(fn(store_df, horizon))
         except Exception:

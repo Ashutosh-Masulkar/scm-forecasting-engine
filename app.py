@@ -13,6 +13,7 @@ from scripts.forecasting_engine import (
     get_store_data,
     run_arima_forecast,
     run_holtwinters_forecast,
+    run_prophet_forecast,
     run_xgboost_forecast,
     build_forecast_results,
     calculate_inventory_metrics,
@@ -34,7 +35,7 @@ INK = "#0F172A"
 SURFACE = "#FFFFFF"
 BORDER = "#E2E8F0"
 
-MODEL_COLORS = {"ARIMA": PRIMARY, "Holt-Winters": ACCENT, "XGBoost": WARN}
+MODEL_COLORS = {"ARIMA": PRIMARY, "Holt-Winters": ACCENT, "Prophet": "#8B5CF6", "XGBoost": WARN}
 
 st.markdown(
     """
@@ -216,7 +217,7 @@ st.markdown(
         <div class="hero-tag">Supply Chain Analytics · Portfolio Project</div>
         <div class="hero-title">SCM Demand Forecasting Engine</div>
         <div class="hero-sub">
-            ARIMA · Holt-Winters · XGBoost with auto model selection, inventory policy sizing,
+            ARIMA · Holt-Winters · Prophet · XGBoost with auto model selection, inventory policy sizing,
             and business impact quantification — built on Walmart's 45-store weekly sales dataset.
         </div>
     </div>
@@ -387,6 +388,14 @@ elif page == "Forecast Engine":
                 st.write(f"Holt-Winters complete — MAPE {r['mape']:.2f}%  |  RMSE ${r['rmse']:,.0f}")
             except Exception as e:
                 st.write(f"Holt-Winters failed: {e}")
+
+            st.write("Running Prophet (Facebook seasonal model)...")
+            try:
+                r = run_prophet_forecast(sel_sdf, horizon)
+                results_list.append(r)
+                st.write(f"Prophet complete — MAPE {r['mape']:.2f}%  |  RMSE ${r['rmse']:,.0f}")
+            except Exception as e:
+                st.write(f"Prophet failed: {e}")
 
             st.write("Running XGBoost (ML with demand signals)...")
             try:
