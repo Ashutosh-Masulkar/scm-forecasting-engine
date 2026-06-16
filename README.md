@@ -1,4 +1,6 @@
-# AI Demand Forecasting and Inventory Optimization Engine
+# SCM Demand Forecasting Engine
+
+**Live app:** [Launch on Streamlit Cloud](https://scm-forecasting-engine.streamlit.app) <!-- update link after deploying -->
 
 **One-line business summary:** A supply-chain planning app that forecasts weekly demand, selects the best model by MAPE, and converts forecast output into inventory policy decisions.
 
