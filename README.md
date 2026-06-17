@@ -176,39 +176,3 @@ streamlit run app.py
 
 5. Open the local Streamlit URL shown in the terminal.
 
-## Screenshots
-
-Add screenshots here after running the app locally.
-
-### Demand Review
-
-![Demand Review](screenshots/demand-review.png)
-
-### Forecast Engine
-
-![Forecast Engine](screenshots/forecast-engine.png)
-
-### Inventory Policy
-
-![Inventory Policy](screenshots/inventory-policy.png)
-
-## Future Improvements
-
-- Add SKU-level demand data instead of using sales dollars as a demand proxy
-- Add cross-validation across multiple forecast windows
-- Include additional accuracy metrics such as RMSE, MAE, bias, and WAPE
-- Add model explainability for XGBoost feature importance
-- Integrate supplier lead-time variability into safety stock
-- Add stockout cost and lost-sales simulation
-- Add downloadable forecast and inventory policy reports
-- Add scenario comparison for different service-level, cost, and lead-time assumptions
-- Deploy the app publicly with sample screenshots and demo data
-
-## Resume Bullet Points
-
-- Built an end-to-end supply-chain forecasting app in Python and Streamlit using Walmart weekly sales data across 45 stores.
-- Developed a multi-model forecasting engine using ARIMA, Prophet, and XGBoost, with automatic lowest-MAPE model selection.
-- Converted demand forecasts into inventory planning outputs, including safety stock, reorder point, inventory value, and annual holding cost.
-- Designed All Stores and individual store analysis workflows to compare network-level and location-specific demand patterns.
-- Created service-level what-if analysis to quantify the tradeoff between product availability and inventory carrying cost.
-- Connected forecast accuracy improvement to business impact by estimating reduced error exposure and potential holding cost savings.
